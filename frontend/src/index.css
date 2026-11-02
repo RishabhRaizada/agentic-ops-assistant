@@ -1,0 +1,64 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Schibsted Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-label: "Barlow Condensed", "Schibsted Grotesk", sans-serif;
+
+  --color-ink: #1b2430;
+  --color-ink-2: #3a4553;
+  --color-ink-3: #66717e;
+  --color-ink-4: #98a1ab;
+  --color-paper: #f5f6f3;
+  --color-sheet: #ffffff;
+  --color-rule: #dfe3df;
+  --color-rule-2: #eceeeb;
+  --color-teal: #0e5e6f;
+  --color-teal-2: #0a4a58;
+  --color-teal-soft: #e3eff1;
+  --color-marker: #ffe45c;
+  --color-marker-soft: #fff6c2;
+  --color-pen: #2346a0;
+  --color-pen-soft: #e6ebf8;
+  --color-signal: #c8321e;
+  --color-signal-soft: #fbe9e6;
+  --color-amber: #b26a00;
+  --color-amber-soft: #fdf1dc;
+  --color-go: #2e7d4f;
+  --color-go-soft: #e4f2e9;
+  --color-rail: #1b2430;
+}
+
+html, body, #root { height: 100%; }
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--color-teal); outline-offset: 2px; border-radius: 4px; }
+
+/* The highlighter: machine-read evidence */
+.mark-ai {
+  background: linear-gradient(180deg, transparent 52%, var(--color-marker) 52%, var(--color-marker) 92%, transparent 92%);
+  padding: 0 1px;
+}
+.mark-span {
+  background: var(--color-marker);
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px #f0d22e inset;
+  padding: 0 1px;
+}
+.mark-span.is-hot { background: #ffd400; box-shadow: 0 0 0 2px var(--color-ink) inset; }
+.mark-threat { background: #ffd5cd; box-shadow: 0 0 0 1px var(--color-signal) inset; border-radius: 2px; }
+/* The pen: human corrections */
+.mark-pen { text-decoration: underline; text-decoration-color: var(--color-pen); text-decoration-thickness: 2px; text-underline-offset: 3px; color: var(--color-pen); }
+
+.label { font-family: var(--font-label); letter-spacing: 0.01em; font-variant-numeric: tabular-nums; }
+table td { font-variant-numeric: tabular-nums; }
+.scroll-thin { scrollbar-width: thin; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+@keyframes pulse-dot { 0%, 100% { opacity: 1 } 50% { opacity: .35 } }
+.working-dot { animation: pulse-dot 1.1s ease-in-out infinite; }

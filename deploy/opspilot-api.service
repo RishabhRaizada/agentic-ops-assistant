@@ -1,0 +1,17 @@
+[Unit]
+Description=OpsPilot API (FastAPI + agents + SLA monitor)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu/opspilot/backend
+Environment=PYTHONPATH=/home/ubuntu/opspilot/backend
+Environment=PYDANTIC_AI_NO_BANNER=1
+ExecStart=/home/ubuntu/opspilot/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100 --workers 1 --proxy-headers
+Restart=always
+RestartSec=3
+MemoryMax=400M
+
+[Install]
+WantedBy=multi-user.target

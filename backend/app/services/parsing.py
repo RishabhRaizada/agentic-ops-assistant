@@ -93,3 +93,21 @@ def is_substring(quote: str | None, source: str) -> bool:
         return False
     q = normalize_ws(quote.replace("^", " ")).strip(" .,'\"")
     return len(q) >= 2 and q in normalize_ws(source)
+
+
+def inr(amount: float | int | None) -> str:
+    """Indian digit grouping: 142000 -> ₹1,42,000."""
+    if amount is None:
+        return "—"
+    n = int(round(amount))
+    s, sign = str(abs(n)), "-" if n < 0 else ""
+    if len(s) > 3:
+        head, tail = s[:-3], s[-3:]
+        groups = []
+        while len(head) > 2:
+            groups.insert(0, head[-2:])
+            head = head[:-2]
+        if head:
+            groups.insert(0, head)
+        s = ",".join(groups) + "," + tail
+    return f"{sign}₹{s}"

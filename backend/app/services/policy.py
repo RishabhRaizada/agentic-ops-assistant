@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Approval, Case, User
 from app.services import runtime_settings
+from app.services.parsing import inr
 from app.services.runtime_settings import ESCALATION_LADDER, ROLE_RANK
 
 
@@ -24,7 +25,7 @@ def requirement(db: Session, case: Case, option: dict[str, Any]) -> dict[str, An
     conf_high = runtime_settings.get(db, "conf_high")
     reasons: list[str] = []
     if amount > 0:
-        reasons.append(f"commits additional spend of ₹{amount:,.0f}")
+        reasons.append(f"commits additional spend of {inr(amount)}")
     if case.risk_level in ("high", "critical"):
         reasons.append(f"risk level is {case.risk_level}")
     if case.category == "customer_commitment":
@@ -66,7 +67,7 @@ def can_decide(user: User, approval: Approval, case: Case) -> tuple[bool, str]:
     if user.region not in ("ALL", approval.region):
         return False, f"request is in region {approval.region}; your authority covers {user.region}"
     if approval.amount_inr > user.approval_limit_inr:
-        return False, f"₹{approval.amount_inr:,.0f} exceeds your approval limit of ₹{user.approval_limit_inr:,.0f}"
+        return False, f"{inr(approval.amount_inr)} exceeds your approval limit of {inr(user.approval_limit_inr)}"
     if approval.requested_by_id == user.id:
         return False, "you submitted this request; separation of duties forbids self-approval"
     return True, ""

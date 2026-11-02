@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.agents.contracts import ExtractedField, IntakeResult, IssueExtraction
 from app.models import Store, Supplier
+from app.services.parsing import inr
 
 _C = 0.5  # flat confidence: regexes are precise but blind to context
 
@@ -130,14 +131,14 @@ def plan(db: Session, case, deps, constraints: dict | None = None):
         cost = t_cost + a["fixed_cost_inr"] + q * a["unit_premium_inr"]
         options.append(ActionOption(
             key="A", title=f"Transfers + {a['supplier_name']} for the balance", steps=[*steps, f"Order {q} units from {a['supplier_name']}"],
-            est_cost_inr=cost, cost_breakdown=f"transfers ₹{t_cost:,.0f} + {q} × ₹{a['unit_premium_inr']:,.0f} + ₹{a['fixed_cost_inr']:,.0f}",
+            est_cost_inr=cost, cost_breakdown=f"transfers {inr(t_cost)} + {q} × {inr(a['unit_premium_inr'])} + {inr(a['fixed_cost_inr'])}",
             covers_qty=moved + q, eta_days=max(t_eta, a["lead_days"]), meets_deadline=days is None or max(t_eta, a["lead_days"]) <= days,
             feasibility="medium", rationale="Rules-based: cheapest transfer lanes first, cheapest alternate supplier for the remainder.",
             tool_refs=[t_transfer["ref"], t_alt["ref"]]))
     if transfers:
         options.append(ActionOption(
             key="B", title="Partial launch with transfers only", steps=steps or ["No transfers available"], est_cost_inr=t_cost,
-            cost_breakdown=f"transfer lanes ₹{t_cost:,.0f}", covers_qty=moved, eta_days=t_eta,
+            cost_breakdown=f"transfer lanes {inr(t_cost)}", covers_qty=moved, eta_days=t_eta,
             meets_deadline=days is None or t_eta <= days, feasibility="high",
             risks=[f"covers {moved} of {shortfall} units"], rationale="Rules-based: lowest-cost partial cover.", tool_refs=[t_transfer["ref"]]))
     exps = t_exp.get("data") or []
@@ -146,7 +147,7 @@ def plan(db: Session, case, deps, constraints: dict | None = None):
         q = min(e["max_quantity"], shortfall)
         options.append(ActionOption(
             key="C", title="Expedite from current supplier", steps=[f"Request expedited shipment of {q} units from {e['supplier_code']}"],
-            est_cost_inr=e["fixed_cost_inr"] + q * e["unit_premium_inr"], cost_breakdown=f"₹{e['fixed_cost_inr']:,.0f} + {q} × ₹{e['unit_premium_inr']:,.0f}",
+            est_cost_inr=e["fixed_cost_inr"] + q * e["unit_premium_inr"], cost_breakdown=f"{inr(e['fixed_cost_inr'])} + {q} × {inr(e['unit_premium_inr'])}",
             covers_qty=q, eta_days=e["lead_days"], meets_deadline=days is None or e["lead_days"] <= days, feasibility="medium",
             rationale="Rules-based: single-source expedite.", tool_refs=[t_exp["ref"]]))
     if cap is not None:

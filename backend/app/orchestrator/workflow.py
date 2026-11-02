@@ -16,7 +16,7 @@ from app.orchestrator import pipeline
 from app.orchestrator import states as S
 from app.security import deny, ensure_can_write
 from app.services import audit, comms_gen, ledger, outbox, policy, runtime_settings
-from app.services.parsing import parse_int, parse_money_inr, parse_when
+from app.services.parsing import inr, parse_int, parse_money_inr, parse_when
 
 INT_KEYS = {"quantity_required", "quantity_available_claimed", "available_qty", "delay_days", "shortfall"}
 DATE_KEYS = {"event_date", "decision_deadline"}
@@ -140,7 +140,7 @@ def add_custom_option(db: Session, user: User, case: Case, option: dict[str, Any
                          plan_hash=hashlib.sha256(json.dumps([opt, case.ledger_version], sort_keys=True).encode()).hexdigest())
     db.add(rec)
     db.flush()
-    _human(db, user, case, "option.custom", f"Added operator option {key}: {opt['title']} (₹{opt['est_cost_inr']:,.0f})",
+    _human(db, user, case, "option.custom", f"Added operator option {key}: {opt['title']} ({inr(opt['est_cost_inr'])})",
            entity="recommendation", entity_id=rec.id, after=opt, pinned=True)
     return rec
 
@@ -204,14 +204,14 @@ def _create_approval(db: Session, case: Case, rec: Recommendation, role: str, re
     db.add(a)
     db.flush()
     audit.record(db, action="approval.requested",
-                 summary=f"Approval requested from {approver.name if approver else role} for option {rec.option_key} (₹{a.amount_inr:,.0f}), due {a.due_at:%H:%M} UTC",
+                 summary=f"Approval requested from {approver.name if approver else role} for option {rec.option_key} ({inr(a.amount_inr)}), due {a.due_at:%H:%M} UTC",
                  actor_type="human" if requested_by else "system", actor_id=requested_by.email if requested_by else "sla-monitor",
                  case_id=case.id, entity="approval", entity_id=a.id, meta={"reasons": reasons, "role": role, "level": level}, pinned=True)
     if approver:
-        outbox.notify(db, approver, f"[{case.ref}] Approval needed: {rec.option['title']} - ₹{a.amount_inr:,.0f}", kind="approval_request", case=case)
+        outbox.notify(db, approver, f"[{case.ref}] Approval needed: {rec.option['title']} - {inr(a.amount_inr)}", kind="approval_request", case=case)
         outbox.system_email(db, case, [approver.email], f"[{case.ref}] Approval needed: {rec.option['title']}",
                             f"{approver.name},\n\nYour approval is requested for {case.ref} - {case.title}.\n"
-                            f"Option {rec.option_key}: {rec.option['title']}\nAdditional cost: ₹{a.amount_inr:,.0f}\n"
+                            f"Option {rec.option_key}: {rec.option['title']}\nAdditional cost: {inr(a.amount_inr)}\n"
                             f"Why approval is required: {'; '.join(reasons)}\nPlease decide in OpsPilot before {a.due_at:%d %b %H:%M} UTC.\n\nOpsPilot",
                             audience="approver_brief")
     return a
@@ -229,7 +229,7 @@ def decide(db: Session, user: User, approval_id: int, decision: str, reason: str
             return {"status": prior.status, "idempotent_replay": True}
     ok, why = policy.can_decide(user, a, case)
     if not ok:
-        raise deny(db, user, f"{decision} approval #{a.id} (₹{a.amount_inr:,.0f}, {a.required_role})", why, case, approval_id=a.id)
+        raise deny(db, user, f"{decision} approval #{a.id} ({inr(a.amount_inr)}, {a.required_role})", why, case, approval_id=a.id)
     rec = db.get(Recommendation, a.recommendation_id)
     if rec.plan_hash != a.plan_hash or a.ledger_version != case.ledger_version:
         a.status = "superseded"
@@ -244,7 +244,7 @@ def decide(db: Session, user: User, approval_id: int, decision: str, reason: str
     if decision == "approve":
         a.status, rec.status = "approved", "approved"
         _transition(db, case, S.APPROVED, user, f"approved by {user.name}" + (f": {reason}" if reason else ""))
-        _human(db, user, case, "approval.approved", f"Approved option {rec.option_key} (₹{a.amount_inr:,.0f})" + (f" - {reason}" if reason else ""),
+        _human(db, user, case, "approval.approved", f"Approved option {rec.option_key} ({inr(a.amount_inr)})" + (f" - {reason}" if reason else ""),
                entity="approval", entity_id=a.id, pinned=True)
         outbox.notify(db, requester, f"[{case.ref}] Approved by {user.name}", kind="approval_decision", case=case)
         _start_execution(db, case, rec, user)
@@ -261,7 +261,7 @@ def decide(db: Session, user: User, approval_id: int, decision: str, reason: str
         return {"status": "info_requested"}
     # reject -> alternative action required
     a.status, rec.status, a.budget_cap_inr = "rejected", "rejected", budget_cap
-    _human(db, user, case, "approval.rejected", f"Rejected option {rec.option_key}: {reason}" + (f" (budget cap ₹{budget_cap:,.0f})" if budget_cap else ""),
+    _human(db, user, case, "approval.rejected", f"Rejected option {rec.option_key}: {reason}" + (f" (budget cap {inr(budget_cap)})" if budget_cap else ""),
            entity="approval", entity_id=a.id, pinned=True)
     _transition(db, case, S.REPLANNING, user, f"rejected by {user.name}: {reason}")
     outbox.notify(db, requester, f"[{case.ref}] Option rejected by {user.name}: {reason}. Re-planning alternatives.", kind="approval_decision", case=case)

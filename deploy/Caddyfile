@@ -1,0 +1,22 @@
+# OpsPilot - served from the Oracle Always Free box. sslip.io maps the hostname to the IP, so Caddy
+# can obtain a Let's Encrypt certificate without owning a domain.
+{$OPSPILOT_HOST:92-4-93-133.sslip.io} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy same-origin
+		-Server
+	}
+	handle /api/* {
+		reverse_proxy 127.0.0.1:8100
+	}
+	handle {
+		root * /srv/opspilot
+		try_files {path} /index.html
+		file_server
+	}
+	log {
+		output file /var/log/caddy/opspilot.log
+	}
+}
