@@ -324,3 +324,14 @@ def test_idempotent_decision(api):
     r = api.post(f"/api/approvals/{appr['id']}/decision", {"decision": "approve"}, headers=h)
     assert r.status_code == 200 and r.json()["idempotent_replay"]
     _ = timedelta
+
+
+def test_flagged_email_never_mutates_existing_case(api):
+    first = api.ingest("S1")
+    before = {f["key"]: f["value"] for f in first["facts"]}
+    inj = api.ingest("S6")
+    assert inj["status"] == "NEEDS_REVIEW" and inj["duplicate_of_ref"] is None
+    assert any(i["detail"].get("target_ref") == first["ref"] for i in api.issues(inj, "duplicate"))
+    after = api.case(first["id"])
+    assert len(after["messages"]) == 1
+    assert {f["key"]: f["value"] for f in after["facts"]} == before

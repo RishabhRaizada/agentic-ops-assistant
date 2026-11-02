@@ -190,6 +190,22 @@ def _field_scores(issue: IssueExtraction, text: str) -> dict[str, float]:
     return scores
 
 
+GENERIC_VALUES = {
+    "supplier": {"supplier", "our supplier", "the supplier", "vendor", "the vendor", "our vendor", "supplier name"},
+    "item": {"items", "item", "stock", "goods", "products", "some items"},
+    "location": {"store", "the store", "new store", "warehouse", "the warehouse"},
+    "customer": {"customer", "the customer", "client"},
+}
+
+
+def _placeholder(name: str, value: str) -> bool:
+    v = normalize_ws(value).strip(" .")
+    if v in GENERIC_VALUES.get(name, set()):
+        return True
+    kind = INTAKE_FIELDS[name]
+    return kind in ("int", "money") and not any(ch.isdigit() for ch in v) and parse_int(v) is None
+
+
 def _write_intake_facts(db: Session, case: Case, issue: IssueExtraction, msg: CaseMessage, *, source: str = "email",
                         only: set[str] | None = None) -> None:
     text = f"{msg.subject}\n{msg.body}"
@@ -200,6 +216,11 @@ def _write_intake_facts(db: Session, case: Case, issue: IssueExtraction, msg: Ca
         if not f.value or f.status == "missing":
             if only is None:
                 ledger.upsert(db, case, name, None, source=source, status="missing", confidence=0.0)
+            continue
+        if _placeholder(name, f.value):
+            # The model echoed a generic word ("our supplier", "additional cost") - that is not a fact.
+            if only is None:
+                ledger.upsert(db, case, name, None, source=source, status="missing", confidence=0.0, raw_text=f.value)
             continue
         grounded = is_substring(f.evidence_quote, text)
         status = f.status
@@ -609,7 +630,7 @@ def _review(db: Session, case: Case, plan: Plan, deps: PlannerDeps, constraints:
     payload = {"plan": plan.model_dump(), "tool_results": deps.tool_results, "facts": ledger.snapshot(case), "constraints": constraints}
     out = run_agent(db, agent=reviewer_agent, name="reviewer", step=step, prompt=load_prompt("reviewer"),
                     user_prompt=json.dumps(payload, default=str), input_payload={"plan_keys": [o.key for o in plan.options]},
-                    case_id=case.id, ledger_version=case.ledger_version, thinking=True)
+                    case_id=case.id, ledger_version=case.ledger_version, thinking="low")
     return out.output if out.ok else None
 
 
@@ -645,7 +666,13 @@ def process_new(case_id: int) -> None:
                               severity="medium", detail={"questions": intake.clarifying_questions}, dedupe_key="ambiguous")
         _write_intake_facts(db, case, issue, msg)
         db.commit()
-        if not was_degraded and _correlate(db, case, msg, intake):
+        if msg.guard_label not in (None, "safe"):
+            # Untrusted content may reference a real case; it must never merge into or edit it.
+            cands = _candidates(db, case, issue)
+            if cands:
+                ledger.open_issue(db, case, "duplicate", f"Mentions the same issue as {cands[0][0].ref} - not linked automatically because the content is flagged",
+                                  severity="medium", detail={"target_ref": cands[0][0].ref, "reason": "flagged content"}, dedupe_key=f"dup-{cands[0][0].ref}")
+        elif not was_degraded and _correlate(db, case, msg, intake):
             _mark(db, case, False)
             return
         db.commit()

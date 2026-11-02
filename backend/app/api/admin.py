@@ -28,7 +28,8 @@ public = APIRouter(tags=["health"])
 def get_all(user: User = Depends(current_user), db: Session = Depends(get_db)):
     return {k: runtime_settings.get(db, k) for k in runtime_settings.DEFAULTS} | {
         "clock_offset_seconds": clock.offset_seconds(), "now": clock.now().isoformat(), "local_now": clock.local_now().isoformat(),
-        "llm": {"configured": get_settings().llm_enabled, "primary": llm.model_names()[0], "fallback": llm.model_names()[1]},
+        "llm": {"configured": get_settings().llm_enabled, "primary": llm.model_names()[0], "fallback": llm.model_names()[1],
+                "chain": list(dict.fromkeys(llm.chain_names()))},
     }
 
 

@@ -12,7 +12,7 @@ interface S {
   approval_matrix: { max_inr: number | null; role: string }[];
   approval_sla_hours: Record<string, number>;
   conf_high: number; conf_block: number; clock_offset_seconds: number; now: string; local_now: string;
-  llm: { configured: boolean; primary: string; fallback: string };
+  llm: { configured: boolean; primary: string; fallback: string; chain?: string[] };
 }
 
 const CHAOS = [
@@ -100,7 +100,7 @@ export default function Admin() {
 
       <Panel title="AI models">
         <p className="px-4 py-3 text-sm text-ink-2">
-          {d.llm.configured ? <>Primary <span className="font-medium">{d.llm.primary}</span>, fallback <span className="font-medium">{d.llm.fallback}</span>, then deterministic rules.</> : "No model configured: running in rules-only mode."}
+          {d.llm.configured ? <>Fallback chain: <span className="font-medium">{(d.llm.chain || [d.llm.primary, d.llm.fallback]).join(" → ")}</span> → deterministic rules. Each step takes over on errors, rate limits or timeouts.</> : "No model configured: running in rules-only mode."}
         </p>
       </Panel>
 

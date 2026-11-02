@@ -13,7 +13,7 @@ interface Ready {
   inventory: { chaos_down: boolean; breaker: string };
   mail: { chaos_down: boolean; breaker: string };
 }
-interface Settings { clock_offset_seconds: number; llm: { primary: string; fallback: string; configured: boolean } }
+interface Settings { clock_offset_seconds: number; llm: { primary: string; fallback: string; configured: boolean; chain?: string[] } }
 interface Notif { id: number; kind: string; text: string; read: boolean; case_id: number | null; case_ref: string | null; created_at: string }
 
 export function useServerSettings() {
@@ -91,7 +91,7 @@ export default function Layout() {
             )}
             {settings.data?.llm && (
               <span className="hidden text-xs text-ink-3 sm:inline">
-                Models: {settings.data.llm.primary} → {settings.data.llm.fallback}
+                Models: {(settings.data.llm.chain || [settings.data.llm.primary, settings.data.llm.fallback]).join(" → ")} → rules
               </span>
             )}
             <span className="text-xs text-ink-3 md:hidden">{user?.name}</span>

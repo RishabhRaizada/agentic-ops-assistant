@@ -49,7 +49,7 @@ The edge cases each have their own simulated email or admin control. See [Edge c
 ```
 React SPA (Vite) ──HTTPS──> Caddy ──/api──> FastAPI (single process)
                                               ├─ Orchestrator: explicit state machine over a shared fact ledger
-                                              ├─ 7 PydanticAI agents (typed I/O) ──> Gemini Flash → Flash-Lite fallback
+                                              ├─ 7 PydanticAI agents (typed I/O) ──> Gemini 3.5 Flash-Lite → 3 Flash → 3.5 Flash → 3.6 Flash → Groq gpt-oss-120b
                                               │     → deterministic rules if both fail
                                               ├─ Deterministic services: policy, risk rules, reconciler, grounding,
                                               │     confidence, dedup, outbox, SLA monitor, audit hash-chain
@@ -180,7 +180,7 @@ To run it in Docker instead: `docker compose up --build`, then open http://local
 Deploy with `make deploy`, which builds the SPA, rsyncs to the VM, runs `uv sync`, and restarts the systemd unit and Caddy (see `deploy/`).
 
 ### Configuration (`backend/.env`)
-- **Model:** `GOOGLE_API_KEY`, `LLM_PRIMARY_MODEL` (default `gemini-2.5-flash`), `LLM_FALLBACK_MODEL` (default `gemini-2.5-flash-lite`), `LLM_MAX_RUNS_PER_MIN`.
+- **Model:** `GOOGLE_API_KEY`, `LLM_PRIMARY_MODEL` (default `gemini-3.5-flash-lite`), `LLM_FALLBACK_MODEL` (comma-separated chain), `GROQ_API_KEYS` (comma-separated; each key is its own fallback backend), `GROQ_MODEL`, `LLM_MAX_RUNS_PER_MIN`.
 - **Thresholds:** `CONF_HIGH`, `CONF_BLOCK`.
 - **Mail:** `MAIL_PROVIDER` (`mock` or `smtp` with `SMTP_*`).
 - **Webhook intake:** `INTAKE_WEBHOOK_SECRET` enables HMAC-signed email intake at `POST /api/intake/webhook`.
@@ -194,7 +194,7 @@ Deploy with `make deploy`, which builds the SPA, rsyncs to the VM, runs `uv sync
 |---|---|---|
 | **PydanticAI**, not LangGraph or CrewAI | Typed outputs with validator-driven retries, `FallbackModel`, tool calling, and offline `FunctionModel` tests. Approvals can wait hours, so they are database rows with a due time rather than paused graph threads | No graph DSL; the orchestration is plain Python (explicit and testable) |
 | **Deterministic orchestrator + state machine** | Every transition is audited and illegal moves are rejected. Money, authority and routing never depend on a model | Less "autonomous" by design |
-| **Gemini Flash → Flash-Lite → rules** | Low latency and cost; two independent quota pools; a guaranteed floor | Free-tier rate limits, handled by a throttle and degraded mode |
+| **Gemini 3.5 Flash-Lite first, larger Gemini models and Groq as fallbacks, then rules** | Cost-optimised: the fast model handles the routine path (S1 in about 25 s); each fallback has its own quota pool, so outages and rate limits roll over; a deterministic floor | Lite models are weaker at long reasoning. The Reviewer agent and the validators compensate, and any backend can be promoted to primary by an env change |
 | **SQLite (WAL)** | The demo VM has 1 GB RAM. One file, zero ops | Single writer. The code is dialect-neutral, so switching to Postgres means changing `DATABASE_URL` |
 | **In-process SLA monitor and worker** | No Redis or Celery needed for a prototype | Single instance. A queue (e.g. Postgres `SKIP LOCKED` or Temporal) is the scale path |
 | **Mock enterprise systems** | Deterministic, explainable demo data, with fault injection | Real ERP/WMS adapters plug in behind `integrations/systems.py` |

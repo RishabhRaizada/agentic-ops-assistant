@@ -124,7 +124,7 @@ def plan(db: Session, case, deps, constraints: dict | None = None):
         t_cost += lane["fixed_cost_inr"] + q * lane["unit_premium_inr"]
         t_eta = max(t_eta, lane["lead_days"])
         steps.append(f"Raise transfer of {q} units from {lane['from_location']} to {store}")
-    alts = sorted(t_alt.get("data") or [], key=lambda x: x["unit_premium_inr"])
+    alts = sorted(t_alt.get("data") or [], key=lambda x: (not x.get("is_contracted", True), x["unit_premium_inr"]))
     if alts and moved < shortfall:
         a = alts[0]
         q = min(a["max_quantity"], shortfall - moved)

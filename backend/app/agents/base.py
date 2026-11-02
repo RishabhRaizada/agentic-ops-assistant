@@ -79,13 +79,15 @@ def _extract_trace(messages: list) -> tuple[str, int, list[dict[str, Any]]]:
     return model_used, retries + max(0, final_calls - 1), list(calls.values())
 
 
-def _is_fallback(model_used: str, primary: str, fallback: str) -> bool:
-    """Which configured model answered? Longest-prefix match, because provider model ids carry
-    suffixes and 'gemini-2.5-flash-lite' itself starts with 'gemini-2.5-flash'."""
-    if not model_used:
+def _is_fallback(model_used: str, chain: list[str]) -> bool:
+    """Was the answer produced by anything other than the primary? Longest-prefix match, because
+    provider ids carry suffixes and a fallback id can itself start with the primary's id."""
+    if not model_used or not chain:
         return False
-    matches = [n for n in (primary, fallback) if model_used.startswith(n)]
-    return bool(matches) and max(matches, key=len) == fallback and fallback != primary
+    matches = [n for n in dict.fromkeys(chain) if model_used.startswith(n) or n.endswith(model_used)]
+    if not matches:
+        return True
+    return max(matches, key=len) != chain[0]
 
 
 def run_agent(
@@ -100,7 +102,7 @@ def run_agent(
     case_id: int | None,
     ledger_version: int = 1,
     deps: Any = None,
-    thinking: bool = False,
+    thinking: bool | str = False,
     confidence_of=lambda o: getattr(o, "confidence", None),
     request_limit: int = 12,
 ) -> Outcome[T]:
@@ -121,9 +123,12 @@ def run_agent(
     if model is None:
         run.status, run.degraded, run.error = "degraded", True, "No LLM configured (GOOGLE_API_KEY missing)"
     else:
-        settings: dict[str, Any] = {"temperature": 0.2, "timeout": get_settings().llm_timeout_s}
-        if not thinking:
-            settings["google_thinking_config"] = {"thinking_budget": 0}
+        # Gemini 3.x takes thinking_level (thinking_budget=0 is rejected by the Flash-Lite tier).
+        settings: dict[str, Any] = {
+            "temperature": 0.2,
+            "timeout": get_settings().llm_timeout_s,
+            "google_thinking_config": {"thinking_level": thinking if isinstance(thinking, str) else ("medium" if thinking else "minimal")},
+        }
         try:
             llm.throttle(db)
             result = agent.run_sync(
@@ -137,7 +142,7 @@ def run_agent(
             output = result.output
             model_used, retries, calls = _extract_trace(result.all_messages())
             run.model = model_used or primary_name
-            run.fallback_used = _is_fallback(model_used, primary_name, fallback_name)
+            run.fallback_used = _is_fallback(model_used, llm.chain_names())
             run.validation_retries = retries
             run.tool_calls = json.loads(json.dumps(calls, default=str))
             run.output_json = output.model_dump(mode="json")
@@ -147,7 +152,8 @@ def run_agent(
             run.status = "ok"
         except (ModelAPIError, UnexpectedModelBehavior, UsageLimitExceeded, AgentRunError, ExceptionGroup) as e:
             run.status, run.degraded = "failed", True
-            run.error = f"{type(e).__name__}: {e}"[:800]
+            detail = "; ".join(f"{type(x).__name__}: {str(x)[:160]}" for x in getattr(e, "exceptions", [])) or str(e)
+            run.error = f"{type(e).__name__}: {detail}"[:1200]
             run.model = primary_name
         except Exception as e:  # network stacks raise a zoo of types; never crash the pipeline
             run.status, run.degraded = "failed", True

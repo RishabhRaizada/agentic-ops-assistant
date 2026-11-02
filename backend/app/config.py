@@ -20,11 +20,13 @@ class Settings(BaseSettings):
     session_hours: int = 12
 
     google_api_key: str = ""
+    groq_api_keys: str = ""  # comma-separated; each key becomes its own fallback backend
+    groq_model: str = "openai/gpt-oss-120b"
     llm_fake: bool = False  # offline dev/tests: deterministic scripted model, labelled fake-llm
-    llm_primary_model: str = "gemini-2.5-flash"
-    llm_fallback_model: str = "gemini-2.5-flash-lite"
-    llm_timeout_s: float = 40.0
-    llm_max_runs_per_min: int = 8
+    llm_primary_model: str = "gemini-3.5-flash-lite"
+    llm_fallback_model: str = "gemini-3-flash-preview,gemini-3.5-flash,gemini-3.6-flash"  # comma-separated chain
+    llm_timeout_s: float = 30.0
+    llm_max_runs_per_min: int = 30
 
     conf_high: float = 0.75
     conf_block: float = 0.5
@@ -47,7 +49,7 @@ class Settings(BaseSettings):
 
     @property
     def llm_enabled(self) -> bool:
-        return bool(self.google_api_key) or self.llm_fake
+        return bool(self.google_api_key or self.groq_api_keys.strip()) or self.llm_fake
 
 
 @lru_cache
