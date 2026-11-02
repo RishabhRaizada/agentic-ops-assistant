@@ -146,7 +146,7 @@ def _email_block(msg: CaseMessage) -> str:
 
 
 def _screen(db: Session, case: Case, msg: CaseMessage) -> None:
-    signals = injection.scan(f"{msg.subject}\n{msg.body}")
+    signals = injection.scan(f"{msg.from_name} <{msg.from_addr}>\n{msg.subject}\n{msg.body}")
     label = injection.heuristic_label(signals)
     out = run_agent(db, agent=guard_agent, name="guard", step="screen", prompt=load_prompt("guard"),
                     user_prompt=_email_block(msg), input_payload={"message_id": msg.id, "hash": msg.content_hash}, case_id=case.id)
@@ -171,8 +171,8 @@ def _intake(db: Session, case: Case, msg: CaseMessage) -> tuple[IntakeResult, bo
     prompt = load_prompt("intake")
     out = run_agent(db, agent=intake_agent, name="intake", step="extract", prompt=prompt, user_prompt=_email_block(msg),
                     input_payload={"message_id": msg.id, "hash": msg.content_hash}, case_id=case.id,
-                    deps=IntakeDeps(email_text=f"{msg.subject}\n{msg.body}"),
-                    confidence_of=lambda o: sum(_field_scores(o.issues[0], f"{msg.subject}\n{msg.body}").values()) / len(INTAKE_FIELDS))
+                    deps=IntakeDeps(email_text=f"{msg.from_name} <{msg.from_addr}>\n{msg.subject}\n{msg.body}"),
+                    confidence_of=lambda o: sum(_field_scores(o.issues[0], f"{msg.from_name} <{msg.from_addr}>\n{msg.subject}\n{msg.body}").values()) / len(INTAKE_FIELDS))
     if out.ok:
         return out.output, False
     result = degraded.extract(db, msg.subject, msg.body)
@@ -208,7 +208,7 @@ def _placeholder(name: str, value: str) -> bool:
 
 def _write_intake_facts(db: Session, case: Case, issue: IssueExtraction, msg: CaseMessage, *, source: str = "email",
                         only: set[str] | None = None) -> None:
-    text = f"{msg.subject}\n{msg.body}"
+    text = f"{msg.from_name} <{msg.from_addr}>\n{msg.subject}\n{msg.body}"
     for name, kind in INTAKE_FIELDS.items():
         if only is not None and name not in only:
             continue
