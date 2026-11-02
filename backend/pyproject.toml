@@ -1,37 +1,4 @@
-[project]
-name = "opspilot"
-version = "0.1.0"
-description = "OpsPilot - agentic AI operations assistant (backend)"
-authors = [
-    { name = "Rishabh Kumar Raizada", email = "rishabh6822@gmail.com" }
-]
-requires-python = ">=3.12"
-dependencies = [
-    "alembic>=1.20.1",
-    "bcrypt>=5.0.0",
-    "dateparser>=1.4.3",
-    "fastapi>=0.162.0",
-    "httpx>=0.28.1",
-    "pydantic-ai-slim[google,groq]>=2.64.0",
-    "pydantic-settings>=2.16.2",
-    "pyjwt>=2.15.1",
-    "python-multipart>=0.0.33",
-    "rapidfuzz>=3.14.6",
-    "sqlalchemy>=2",
-    "uvicorn[standard]>=0.54.0",
-]
-
-
-
-[dependency-groups]
-dev = [
-    "pytest>=9.2.0",
-    "pytest-asyncio>=1.4.1.post1",
-    "ruff>=0.17.3",
-]
-
-[tool.uv]
-package = false
+# Tool configuration only. Dependencies live in requirements.txt (runtime) and requirements-dev.txt (tests, lint).
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

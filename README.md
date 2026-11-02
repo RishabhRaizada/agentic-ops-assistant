@@ -168,18 +168,41 @@ Every row above has an automated test in `backend/tests/integration/test_workflo
 
 ## Run it locally
 
-Requirements: Python 3.12 with [uv](https://docs.astral.sh/uv/), and Node 22.
+Requirements: Python 3.12+ and Node 22+.
+
+**1. Backend** (FastAPI on http://localhost:8100)
 
 ```bash
-cp backend/.env.example backend/.env        # add GOOGLE_API_KEY, or set LLM_FAKE=true for the offline scripted model
-make api        # FastAPI on :8100 - creates and seeds SQLite on first start
-make web        # Vite on :5173 (proxies /api)
-make test       # 34 offline tests (fake LLM, temp DB)
+cd backend
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+cp .env.example .env               # add GOOGLE_API_KEY, or set LLM_FAKE=true for the offline scripted model
+uvicorn app.main:app --reload --port 8100
+```
+
+SQLite is created and seeded on first start. Delete `backend/data/` to reset the demo data.
+
+**2. Frontend** (Vite on http://localhost:5173, proxies `/api` to the backend), in a second terminal:
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+**Tests and lint** (offline: fake LLM, temp DB):
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest -q
+ruff check app tests
 ```
 
 To run it in Docker instead: `docker compose up --build`, then open http://localhost:8080.
 
-Deploy with `make deploy`, which builds the SPA, rsyncs to the VM, runs `uv sync`, and restarts the systemd unit and Caddy (see `deploy/`).
+To deploy, run `deploy/deploy.sh`. It builds the SPA, rsyncs to the VM, installs `requirements.txt`, and restarts the systemd unit and Caddy (see `deploy/`).
 
 ### Configuration (`backend/.env`)
 - **Model:** `GOOGLE_API_KEY`, `LLM_PRIMARY_MODEL` (default `gemini-3.5-flash-lite`), `LLM_FALLBACK_MODEL` (comma-separated chain), `GROQ_API_KEYS` (comma-separated; each key is its own fallback backend), `GROQ_MODEL`, `LLM_MAX_RUNS_PER_MIN`.

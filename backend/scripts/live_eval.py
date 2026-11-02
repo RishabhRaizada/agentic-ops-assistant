@@ -1,5 +1,5 @@
 """Run simulated-inbox scenarios through the real pipeline against the configured LLM and print
-what the agents produced. Usage: PYTHONPATH=. uv run python scripts/live_eval.py S1 S4 S6 ..."""
+what the agents produced. Usage (from backend/): python -m scripts.live_eval S1 S4 S6 ..."""
 
 import json
 import os

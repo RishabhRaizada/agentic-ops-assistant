@@ -23,7 +23,9 @@ echo "==> installing and restarting"
 $SSH "$HOST" bash -s <<'REMOTE'
 set -e
 cd ~/opspilot/backend
-~/.local/bin/uv sync --frozen --no-dev --python 3.12 -q
+# The box ships Python 3.10, so uv provides the 3.12 venv; packages come from requirements.txt
+[ -x .venv/bin/python ] || ~/.local/bin/uv venv --python 3.12 -q .venv
+~/.local/bin/uv pip sync -q --python .venv/bin/python requirements.txt
 sudo cp ~/opspilot/deploy/opspilot-api.service /etc/systemd/system/opspilot-api.service
 sudo cp ~/opspilot/deploy/Caddyfile /etc/caddy/Caddyfile
 sudo mkdir -p /var/log/caddy && sudo chown caddy:caddy /var/log/caddy
