@@ -1,0 +1,17 @@
+# Local run: docker compose up --build, then open http://localhost:8080
+# Without GOOGLE_API_KEY the agents fall back to deterministic rules (degraded mode);
+# set LLM_FAKE=true for the scripted offline model.
+services:
+  api:
+    build: ./backend
+    environment:
+      GOOGLE_API_KEY: ${GOOGLE_API_KEY:-}
+      LLM_FAKE: ${LLM_FAKE:-false}
+      SECRET_KEY: ${SECRET_KEY:-local-docker-secret-change-me-0123456789}
+    volumes: [opsdata:/data]
+  web:
+    build: ./frontend
+    ports: ["8080:8080"]
+    depends_on: [api]
+volumes:
+  opsdata:
