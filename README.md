@@ -1,5 +1,7 @@
 # OpsPilot: agentic AI operations assistant
 
+*Take-home submission for the Forward Deployed Engineer role: Rishabh Kumar Raizada.*
+
 OpsPilot takes a retail operations request (an email, a pasted note or an uploaded `.eml`) and carries it to closure:
 
 1. Extracts the facts, deadlines and dependencies.
@@ -185,6 +187,35 @@ Deploy with `make deploy`, which builds the SPA, rsyncs to the VM, runs `uv sync
 - **Mail:** `MAIL_PROVIDER` (`mock` or `smtp` with `SMTP_*`).
 - **Webhook intake:** `INTAKE_WEBHOOK_SECRET` enables HMAC-signed email intake at `POST /api/intake/webhook`.
 - **Storage:** `DATABASE_URL` (any SQLAlchemy URL).
+
+---
+
+## Deploying OpsPilot at a customer
+
+I built this the way I would run a customer engagement:
+- Start from how the ops team works today: email, spreadsheets, chasing approvers.
+- Automate the legwork.
+- Keep authority and money with the people and rules they already trust.
+- Isolate every integration point so it can be swapped for the customer's real systems.
+
+| Phase | What happens | Exit criterion |
+|---|---|---|
+| **0. Discover** (week 0) | Shadow the ops desk, collect 50–100 real requests, map the real approval matrix, regions and limits, baseline time-to-decision and missed deadlines | Signed-off workflow map, policy table and baseline |
+| **1. Integrate** (weeks 1–2) | Ops mailbox → `POST /api/intake/webhook` (Microsoft Graph or Gmail push); replace the mock adapters with read-only ERP/WMS/PO APIs or the team's existing stock sheets; SSO; load the policy in Admin | Real requests flow in; adapters pass the existing tests |
+| **2. Shadow** (week 3) | Agents analyse every request while people work as today; compare the AI's output with what people did; tune prompts, rules and thresholds | ≥ 90% field accuracy on real mail |
+| **3. Assisted pilot** (weeks 4–6) | One region decides in OpsPilot; weekly override and rejection review with the ops lead | Pilot targets met two weeks running |
+| **4. Scale & hand over** | Region-by-region rollout, Teams/Slack approvals, Postgres + job queue, runbook and admin training | The customer's team operates it |
+
+| Customer-specific piece | Where it plugs in | Code change? |
+|---|---|---|
+| Approval matrix, limits, SLA hours, confidence thresholds | Admin → settings (audited) | No |
+| Inbound email | `POST /api/intake/webhook` (HMAC-signed) | No |
+| Inventory / PO / supplier / store calendar | `backend/app/integrations/systems.py`, one adapter per system with a circuit breaker | Adapter only |
+| Outbound email | `integrations/mail.py` (`MAIL_PROVIDER=smtp` or a provider API) | Config / small adapter |
+| LLM provider and models | `LLM_PRIMARY_MODEL`, `LLM_FALLBACK_MODEL`, `GROQ_*` env | No |
+| Agent behaviour | Versioned prompts in `backend/app/agents/prompts/*.md`; every run records its prompt version | Prompt edit |
+
+`backend/scripts/live_eval.py` and `backend/scripts/live_flows.py` replay the scenario set and the human-in-the-loop flows against the configured model. These are the regression checks I would run after every prompt or model change during a deployment.
 
 ---
 

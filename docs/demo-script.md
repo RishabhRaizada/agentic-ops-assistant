@@ -9,7 +9,7 @@ Before recording:
 
 | Time | Screen | What to say (paraphrase freely) |
 |---|---|---|
-| 0:00–0:40 | Deck slides 1–2 | "Retail ops teams decide urgent issues from email. The facts are scattered, deadlines are hours away, and who can approve depends on the amount and region. OpsPilot reads each request, checks it against the systems of record, and routes it to the person who can decide." |
+| 0:00–0:40 | Deck slides 1–2 | "I approached this as I would a customer deployment: start from how the ops team actually works. Retail ops teams decide urgent issues from email. The facts are scattered, deadlines are hours away, and who can approve depends on the amount and region. OpsPilot reads each request, checks it against the systems of record, and routes it to the person who can decide." |
 | 0:40–1:30 | Deck slides 3, 5, 6 | "Agents read and propose, code verifies and routes, people decide. Seven agents share one fact ledger and never call each other. Approvals, money and routing are decided in code, never by the model. Every action is on a hash-chained audit trail. The model chain is Gemini Flash-Lite first, larger Gemini models and Groq as fallbacks, then rules." |
 | 1:30–2:00 | Login page | Pick **Ananya (analyst)**. "Each role has its own authority; the login page lists them." |
 | 2:00–3:45 | Requests → Simulated inbox → **S1 Urgent Delivery Delay** → Deliver | Watch the timeline fill in. Then point out: (a) highlighted evidence in the email; (b) **Facts**: the email never names the supplier, so it was filled from the PO system; 120 units confirmed by inventory; launch in 6 days; shortfall 380; ₹56 lakh revenue at risk; (c) **Risk**: agent vs rules engine side by side; (d) **Options**: three costed options built from tool calls, with the cost working and the approver each one needs. Open the confidence popover: "confidence is computed from evidence, not taken from the model." |
@@ -21,6 +21,6 @@ Before recording:
 | 7:05–7:45 | **Edge: prompt injection**. Simulated inbox → **S6** | Red spans and a *malicious* flag. "It mentions the real PO, but flagged mail is never merged into or allowed to edit another case. No agent has a tool that can approve or send." |
 | 7:45–8:25 | **Edge: conflict + system outage**. Deliver **S4** and pick *Use inventory system (100)*. Then Admin → **All AI models down** and deliver **S3** | The conflict is resolved and recorded as an override. With the models down, the banner appears, rules extract the facts, the case is flagged degraded and missing info triggers a clarification draft. Turn the toggle off. |
 | 8:25–9:05 | Audit trail → **Verify chain**; Analytics → **Generate management summary** | "Every AI, human and system action, tamper-evident. The AI-quality panel shows override, fallback and self-correction rates." |
-| 9:05–9:30 | Deck slide 10 | Impact targets, risks and roadmap. "Thank you." |
+| 9:05–9:30 | Deck slide 10 | "Here is how I would deploy this with the customer: discover, integrate, shadow, pilot, hand over, each phase with an exit criterion and the targets I would be measured on. Thank you." |
 
 Backup lines, if something is slow: "the agents are running live on Gemini. While they work, the timeline shows each step and its latency."

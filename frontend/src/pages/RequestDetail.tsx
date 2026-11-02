@@ -121,6 +121,7 @@ export default function RequestDetail() {
           {c.analysis?.intake?.summary && (
             <p className="text-[15px] leading-relaxed text-ink-2">{c.analysis.intake.summary}</p>
           )}
+          <RequestBrief c={c} />
           <Tabs<Tab>
             value={tab}
             onChange={setTab}
@@ -145,6 +146,40 @@ export default function RequestDetail() {
         </div>
       </div>
     </div>
+  );
+}
+
+/* ====================================================================== what was asked */
+
+function RequestBrief({ c }: { c: CaseDetail }) {
+  const intake = c.analysis?.intake;
+  const issue = intake?.issues?.[0];
+  if (!issue) return null;
+  const deps: string[] = issue.dependencies || [];
+  const people: { name_or_role: string; relation: string; email?: string | null }[] = intake.stakeholders || [];
+  const deadline = c.facts.find((f) => f.key === "decision_deadline");
+  const event = c.facts.find((f) => f.key === "event_date" || f.key === "launch_date");
+  return (
+    <dl className="grid gap-x-6 gap-y-3 rounded-lg border border-rule bg-sheet px-4 py-3 text-sm sm:grid-cols-2">
+      <div className="sm:col-span-2">
+        <dt className="text-xs text-ink-3">What the requester asked for</dt>
+        <dd className="mark-ai mt-0.5 inline">{issue.requested_action || "—"}</dd>
+      </div>
+      <div>
+        <dt className="text-xs text-ink-3">Deadlines</dt>
+        <dd className="mt-0.5">Decision {display(deadline?.value)} · Needed by {display(event?.value)}</dd>
+      </div>
+      <div>
+        <dt className="text-xs text-ink-3">Stakeholders</dt>
+        <dd className="mt-0.5">{people.length ? people.map((p) => `${p.name_or_role} (${p.relation})`).join(", ") : "—"}</dd>
+      </div>
+      <div className="sm:col-span-2">
+        <dt className="text-xs text-ink-3">Dependencies</dt>
+        <dd className="mt-0.5">
+          {deps.length ? <ul className="list-disc space-y-0.5 pl-4">{deps.map((d) => <li key={d}>{d}</li>)}</ul> : <span className="text-ink-3">None identified</span>}
+        </dd>
+      </div>
+    </dl>
   );
 }
 
